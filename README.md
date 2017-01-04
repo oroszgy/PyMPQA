@@ -1,4 +1,4 @@
 PyMPQA
 ======
 
-A python script that extracts subjective sentences and other relations in MPQA corpus
+Python API for reading sentiment annotations from the MPQA corpus.
