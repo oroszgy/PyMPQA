@@ -42,7 +42,18 @@ def parse_annotation(text: str) -> Annotation:
     return params
 
 
-def parse_annotations(filepath: str) -> List[Annotation]:
+def is_annotation_in_sentence(ann: Annotation, sentence: Position) -> bool:
+    return ann[Document.ANN_LEFT] >= sentence[0] \
+           and ann[Document.ANN_RIGHT] <= sentence[1]
+
+
+def _find_enclosing_sentences(ann: Annotation, sentences: List[Position]) -> Position:
+    for sent in sentences:
+        if is_annotation_in_sentence(ann, sent):
+            return sent
+
+
+def parse_annotations(filepath: str, sentences: List[Position]) -> List[Annotation]:
     annotations = []
     with open(filepath) as f:
         reader = csv.reader(f, delimiter="\t")
@@ -50,10 +61,13 @@ def parse_annotations(filepath: str) -> List[Annotation]:
             if row[0].strip()[0] == '#':
                 continue
             l, r = _parse_position(row[1])
-            ann = dict(left=l, right=r, type=row[3])
+            ann = {Document.ANN_LEFT: l, Document.ANN_RIGHT: r, Document.TYPE: row[3]}
             if len(row) > 4:
                 params = parse_annotation(row[4])
                 ann.update(params)
+                sentence_pos = _find_enclosing_sentences(ann, sentences) or (None, None)
+                ann[Document.SENT_LEFT] = sentence_pos[0]
+                ann[Document.SENT_RIGHT] = sentence_pos[1]
             annotations.append(ann)
     return annotations
 
@@ -82,7 +96,7 @@ def parse_document(corpus_path: str, parent_dir: str, filename: str, version: st
 
     text = read_document(document_path)
     sentences = read_sentence_positions(sentence_ann_path)
-    annotations = parse_annotations(annotation_path)
+    annotations = parse_annotations(annotation_path, sentences)
 
     doc = Document(text, sentences, annotations)
     return doc

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import csv
 import sys
+from typing import Iterable
 
 import click
 
@@ -12,15 +13,31 @@ def mpqa_cli():
     pass
 
 
+def write_tsv(rows: Iterable[Iterable], file):
+    writer = csv.writer(file, delimiter='\t')
+    for row in rows:
+        writer.writerow(row)
+        sys.stdout.flush()
+
+
 @mpqa_cli.command()
 @click.argument("corpus_path", type=click.Path(exists=True))
-def extract_sentences(corpus_path: str):
+def sentence_subjectivity(corpus_path: str):
     corpus = parse_corpus(corpus_path)
-    writer = csv.writer(sys.stdout, delimiter='\t')
-    for doc in corpus.documents:
-        for sent, label in doc.subj_obj_sents():
-            writer.writerow([sent, label])
-            sys.stdout.flush()
+    write_tsv(
+        ((sent, label) for doc in corpus.documents for sent, label in doc.subj_obj_sents()),
+        sys.stdout
+    )
+
+
+@mpqa_cli.command()
+@click.argument("corpus_path", type=click.Path(exists=True))
+def targeted_sentiment(corpus_path):
+    corpus = parse_corpus(corpus_path)
+    write_tsv(
+        (data for doc in corpus.documents[:1] for data in doc.targets_w_attitudes()),
+        sys.stdout
+    )
 
 
 if __name__ == "__main__":
