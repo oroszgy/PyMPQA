@@ -1,8 +1,11 @@
 import csv
 import os
-from typing import List
+from typing import List, Union, Tuple
 
-from mpqa.api import Position, AnnotationValue, Annotation, Document, Corpus
+from mpqa.api import Annotation, Document, Corpus, Sentence
+
+AnnotationValue = Union[int, str, List[str], Sentence]
+Position = Tuple[int, int]
 
 
 def _parse_position(text: str) -> Position:
@@ -42,18 +45,13 @@ def parse_annotation(text: str) -> Annotation:
     return params
 
 
-def is_annotation_in_sentence(ann: Annotation, sentence: Position) -> bool:
-    return ann[Document.ANN_LEFT] >= sentence[0] \
-           and ann[Document.ANN_RIGHT] <= sentence[1]
-
-
-def _find_enclosing_sentences(ann: Annotation, sentences: List[Position]) -> Position:
+def _find_enclosing_sentences(ann: Annotation, sentences: List[Sentence]) -> Sentence:
     for sent in sentences:
-        if is_annotation_in_sentence(ann, sent):
+        if ann.in_sentence(sent):
             return sent
 
 
-def parse_annotations(filepath: str, sentences: List[Position]) -> List[Annotation]:
+def parse_annotations(filepath: str, sentences: List[Sentence]) -> List[Annotation]:
     annotations = []
     with open(filepath) as f:
         reader = csv.reader(f, delimiter="\t")
@@ -61,24 +59,23 @@ def parse_annotations(filepath: str, sentences: List[Position]) -> List[Annotati
             if row[0].strip()[0] == '#':
                 continue
             l, r = _parse_position(row[1])
-            ann = {Document.ANN_LEFT: l, Document.ANN_RIGHT: r, Document.TYPE: row[3]}
+            ann = Annotation({Annotation.LEFT: l, Annotation.RIGHT: r, Annotation.TYPE: row[3]})
             if len(row) > 4:
                 params = parse_annotation(row[4])
                 ann.update(params)
-                sentence_pos = _find_enclosing_sentences(ann, sentences) or (None, None)
-                ann[Document.SENT_LEFT] = sentence_pos[0]
-                ann[Document.SENT_RIGHT] = sentence_pos[1]
+                sentence = _find_enclosing_sentences(ann, sentences) or (None, None)
+                ann[Annotation.SENTENCE] = sentence
             annotations.append(ann)
     return annotations
 
 
-def read_sentence_positions(sentence_ann_path: str) -> List[Position]:
+def read_sentence_positions(sentence_ann_path: str) -> List[Sentence]:
     sentences = []
     with open(sentence_ann_path) as f:
         reader = csv.reader(f, delimiter="\t")
         for row in reader:
-            l, r = _parse_position(row[1])
-            sentences.append((l, r))
+            sent = Sentence(_parse_position(row[1]))
+            sentences.append(sent)
     return sentences
 
 
