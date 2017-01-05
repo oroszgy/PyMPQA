@@ -63,7 +63,7 @@ def parse_annotations(filepath: str, sentences: List[Sentence]) -> List[Annotati
             if len(row) > 4:
                 params = parse_annotation(row[4])
                 ann.update(params)
-                sentence = _find_enclosing_sentences(ann, sentences) or (None, None)
+                sentence = _find_enclosing_sentences(ann, sentences) or Sentence((None, None))
                 ann[Annotation.SENTENCE] = sentence
             annotations.append(ann)
     return annotations
@@ -95,7 +95,7 @@ def parse_document(corpus_path: str, parent_dir: str, filename: str, version: st
     sentences = read_sentence_positions(sentence_ann_path)
     annotations = parse_annotations(annotation_path, sentences)
 
-    doc = Document(text, sentences, annotations)
+    doc = Document(text, sentences, annotations, filename)
     return doc
 
 

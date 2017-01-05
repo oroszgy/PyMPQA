@@ -6,7 +6,10 @@ from typing import List, Tuple, Generator
 
 class Sentence(tuple):
     def text(self, doc_text: str) -> str:
-        return doc_text[self[0]: self[1]]
+        if self[0] is not None and self[1] is not None:
+            return doc_text[self[0]: self[1]]
+        else:
+            return None
 
 
 class Annotation(dict):
@@ -31,7 +34,8 @@ class Annotation(dict):
 
     def find_target_annotation(self, annotations):
         for ann in annotations:
-            if Annotation.ID in ann.keys() and ann[Annotation.ID] == self[Annotation.TARGET_LINK]:
+            if Annotation.TARGET_LINK in self.keys() and Annotation.ID in ann.keys() \
+                    and ann[Annotation.ID] == self[Annotation.TARGET_LINK]:
                 return ann
 
     def text(self, doc_text: str) -> str:
@@ -62,7 +66,8 @@ class Document(object):
     OBJ = "objective"
     SUBJ = "subjective"
 
-    def __init__(self, text: str, sentences: List[Sentence], annotations: List[Annotation]) -> None:
+    def __init__(self, text: str, sentences: List[Sentence], annotations: List[Annotation], filename: str) -> None:
+        self.filename = filename
         self.text = text
         self.sentences = sentences
         self.annotations = annotations
@@ -87,8 +92,12 @@ class Document(object):
                 ann_text = ann.text(self.text)
                 enclosing_sentence_text = ann.get_enclosing_sentence().text(self.text)
                 target_ann = ann.find_target_annotation(self.annotations)
-                target_text = target_ann.text(self.text)
-                yield (ann_text, target_text, enclosing_sentence_text)
+                if target_ann:
+                    target_text = target_ann.text(self.text)
+                    yield (ann_text, target_text, enclosing_sentence_text)
+                else:
+                    # TODO: log something
+                    pass
 
 
 class Corpus(object):

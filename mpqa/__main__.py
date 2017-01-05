@@ -35,7 +35,7 @@ def sentence_subjectivity(corpus_path: str):
 def targeted_sentiment(corpus_path):
     corpus = parse_corpus(corpus_path)
     write_tsv(
-        (data for doc in corpus.documents[:1] for data in doc.targets_w_attitudes()),
+        (data for doc in corpus.documents for data in doc.targets_w_attitudes()),
         sys.stdout
     )
 
