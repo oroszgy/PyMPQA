@@ -1,36 +1,27 @@
 #!/usr/bin/env python3
 import csv
-import os
 import sys
 
 import click
 
-from mpqa import Document
-from mpqa.parser import get_ver
+from mpqa import parse_corpus
 
 
 @click.group()
-def mpqa():
+def mpqa_cli():
     pass
 
 
-@mpqa.command()
+@mpqa_cli.command()
 @click.argument("corpus_path", type=click.Path(exists=True))
 def extract_sentences(corpus_path: str):
-    ver = get_ver(corpus_path)
-    docs = []
-
-    docs_path = os.path.join(corpus_path, "docs")
-    for parent in os.listdir(docs_path):
-        for leaf in os.listdir(os.path.join(docs_path, parent)):
-            doc = Document(corpus_path, parent, leaf, ver)
-            docs.append(doc)
+    corpus = parse_corpus(corpus_path)
     writer = csv.writer(sys.stdout, delimiter='\t')
-    for doc in docs:
+    for doc in corpus.documents:
         for sent, label in doc.subj_obj_sents():
             writer.writerow([sent, label])
             sys.stdout.flush()
 
 
 if __name__ == "__main__":
-    mpqa()
+    mpqa_cli()
