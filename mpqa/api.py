@@ -2,7 +2,7 @@
 Details of the annotation scheme is described here: https://github.com/jyuhuan/mpqa/wiki/Types-of-Annotations
 """
 import logging
-from typing import List, Tuple, Generator
+from typing import List, Tuple, Generator, Optional
 
 
 class Sentence(tuple):
@@ -20,7 +20,7 @@ class Annotation(dict):
     SENTENCE = 'sentence'
     ANN_TYPE = 'ann_type'
     TYPE = "type"
-    ATTITUDE_TYPE = "GATE_attitude"
+    ATTITUDE_TYPES = ["GATE_attitude", "attitude"]
     ATTITUDE_T = "attitude-type"
     ENTITY = "entity"
     E_TARGET = "eTarget"
@@ -37,6 +37,21 @@ class Annotation(dict):
     INSUBSTANTIAL = "insubstantial"
     TARGET_LINK = "target-link"
     ID = "id"
+    TARGET_FRAME_LINK = "targetFrame-link"
+    ETARGET_LINK = "newETarget-link"
+
+    @property
+    def etarget_links(self):
+        etarget_link = self.get(Annotation.ETARGET_LINK)
+        if etarget_link and etarget_link != 'none':
+            if type(etarget_link) is str:
+                return [etarget_link]
+            else:
+                return etarget_link
+
+    @property
+    def id(self):
+        return self.get(Annotation.ID)
 
     def in_sentence(self, sentence: Sentence) -> bool:
         return self[Annotation.LEFT] >= sentence[0] \
@@ -51,8 +66,10 @@ class Annotation(dict):
     def text(self, doc_text: str) -> str:
         return doc_text[self[Annotation.LEFT]: self[Annotation.RIGHT]]
 
-    def get_enclosing_sentence(self):
-        return self[Annotation.SENTENCE]
+    def get_enclosing_sentence(self) -> Optional[Sentence]:
+        sent = self[Annotation.SENTENCE]
+        if sent[0] is not None:
+            return sent
 
     @property
     def is_intensive_direct_subjectivity(self) -> bool:
@@ -69,7 +86,7 @@ class Annotation(dict):
 
     @property
     def is_attitude(self) -> bool:
-        return self[Annotation.ANN_TYPE] == Annotation.ATTITUDE_TYPE
+        return self[Annotation.ANN_TYPE] in Annotation.ATTITUDE_TYPES
 
     @property
     def is_entity_target(self) -> bool:
@@ -85,7 +102,9 @@ class Document(object):
         ("annotation_start", "annotation_end", "annotation_text",
          "attitude", "intensity",
          "target_start", "target_end", "target_text", "sentence_text")
-    ENTITY_SENTIMENT_SCHEMA = ("entity_start", "entity_end", "entity_text")
+    ENTITY_SENTIMENT_SCHEMA = ("entity_start", "entity_end", "entity_text",
+                               "intensity", "attitude",
+                               "sentence_text")
 
     def __init__(self, text: str, sentences: List[Sentence], annotations: List[Annotation], filename: str) -> None:
         self.filename = filename
@@ -112,9 +131,9 @@ class Document(object):
             if ann.is_attitude:
                 ann_text = ann.text(self.text)
                 sentence = ann.get_enclosing_sentence()
-                enclosing_sentence_text = sentence.text(self.text)
                 target_ann = ann.find_target_annotation(self.annotations)
-                if target_ann and enclosing_sentence_text:
+                if target_ann and sentence:
+                    enclosing_sentence_text = sentence.text(self.text)
                     target_text = target_ann.text(self.text)
                     yield (ann[Annotation.LEFT] - sentence[0], ann[Annotation.RIGHT] - sentence[0], ann_text,
                            ann.get(Annotation.ATTITUDE_T, "-"), ann.get(Annotation.INTENSITY, "-"),
@@ -125,18 +144,28 @@ class Document(object):
                     logging.debug("No target found for annotation #{} in {}".format(ann[ann.NUM], self.filename))
 
     def entity_sentiment(self) -> Generator[Tuple, None, None]:
-        for e_ann in self._entities():
-            enclosing_sent = e_ann.get_enclosing_sentence()
-            if enclosing_sent[0] is not None:
-                enclosing_sent_text = enclosing_sent.text(self.text)
-                ent_text = e_ann.text(self.text)
-                yield (
-                e_ann[Annotation.LEFT] - enclosing_sent[0], e_ann[Annotation.RIGHT] - enclosing_sent[0], ent_text)
+        for att_ann in self.annotations:
+            if att_ann.is_attitude and "sentiment" in att_ann[Annotation.ATTITUDE_T]:
+                for e_ann, tf_ann in self._find_entities_for_attitude(att_ann):
+                    sent = e_ann.get_enclosing_sentence()
+                    if sent:
+                        # print(att_ann)
+                        # print(tf_ann)
+                        # print(e_ann)
+                        sent_text = sent.text(self.text)
+                        yield (
+                            e_ann[Annotation.LEFT] - sent[0], e_ann[Annotation.RIGHT] - sent[0], e_ann.text(self.text),
+                            att_ann[Annotation.INTENSITY], att_ann[Annotation.ATTITUDE_T],
+                            sent_text
+                        )
 
-    def _entities(self):
-        for ann in self.annotations:
-            if ann.is_entity_target:
-                yield ann
+    def _find_entities_for_attitude(self, attitude_ann):
+        tf_link_id = attitude_ann[Annotation.TARGET_FRAME_LINK]
+        for tf_ann in self.annotations:
+            if tf_ann.id == tf_link_id and tf_ann.etarget_links:
+                for e_ann in self.annotations:
+                    if e_ann.is_entity_target and e_ann.id in tf_ann.etarget_links:
+                        yield e_ann, tf_ann
 
 
 class Corpus(object):
