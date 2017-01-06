@@ -21,6 +21,8 @@ class Annotation(dict):
     TYPE = 'type'
     ATTITUDE_TYPE = "GATE_attitude"
     ATTITUDE_T = "attitude-type"
+    ENTITY = "entity"
+    E_TARGET = "eTarget"
     TARGET_TYPE = "GATE_target"
     EXPRESSIVE_SUBJ_TYPE = 'GATE_expressive-subjectivity'
     DIRECT_SUBJ_TYPE = 'GATE_direct-subjective'
@@ -68,6 +70,10 @@ class Annotation(dict):
     def is_attitude(self) -> bool:
         return self[Annotation.TYPE] == Annotation.ATTITUDE_TYPE
 
+    @property
+    def is_entity_target(self) -> bool:
+        return self[Annotation.TYPE] == Annotation.E_TARGET and self.get(Annotation.TYPE) == Annotation.ENTITY
+
 
 class Document(object):
     OBJ = "objective"
@@ -95,7 +101,7 @@ class Document(object):
             yield (sentence_text, self.SUBJ) if sentence_intensity_counter > 0 \
                 else (sentence_text, self.OBJ)
 
-    def targets_w_attitudes(self, headers: bool = False):
+    def stargets_w_attitudes(self, headers: bool = False) -> Generator[Tuple, None, None]:
         if headers:
             yield ("annotation_start", "annotation_end", "annotation_text",
                    "attitude", "intensity",
@@ -115,6 +121,14 @@ class Document(object):
                            enclosing_sentence_text)
                 else:
                     logging.debug("No target found for annotation #{} in {}".format(ann[ann.NUM], self.filename))
+
+    def entity_sentiment(self, headers: bool = False) -> Generator[Tuple, None, None]:
+        yield from self._entities()
+
+    def _entities(self):
+        for ann in self.annotations:
+            if ann.is_entity_target:
+                yield ann
 
 
 class Corpus(object):

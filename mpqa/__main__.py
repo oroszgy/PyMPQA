@@ -38,7 +38,17 @@ def sentence_subjectivity(corpus_path: str):
 def targeted_sentiment(corpus_path):
     corpus = parse_corpus(corpus_path)
     write_tsv(
-        (data for doc in corpus.documents for data in doc.targets_w_attitudes()),
+        (data for doc in corpus.documents for data in doc.stargets_w_attitudes()),
+        sys.stdout
+    )
+
+
+@mpqa_cli.command()
+@click.argument("corpus_path", type=click.Path(exists=True))
+def entity_sentiment(corpus_path):
+    corpus = parse_corpus(corpus_path)
+    write_tsv(
+        (data for doc in corpus.documents for data in doc.entity_sentiment()),
         sys.stdout
     )
 
