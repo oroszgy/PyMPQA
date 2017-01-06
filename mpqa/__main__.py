@@ -4,7 +4,7 @@ import sys
 import logging
 from typing import Iterable
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 import click
 

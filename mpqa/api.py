@@ -98,7 +98,7 @@ class Document(object):
                     target_text = target_ann.text(self.text)
                     yield (ann_text, target_text, enclosing_sentence_text)
                 else:
-                    logging.error("No target found for annotation #{} in {}".format(ann[ann.NUM], self.filename))
+                    logging.debug("No target found for annotation #{} in {}".format(ann[ann.NUM], self.filename))
 
 
 class Corpus(object):

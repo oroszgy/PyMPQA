@@ -1,4 +1,5 @@
 import csv
+import logging
 import os
 from typing import List, Union, Tuple
 
@@ -49,6 +50,7 @@ def _find_enclosing_sentences(ann: Annotation, sentences: List[Sentence]) -> Sen
     for sent in sentences:
         if ann.in_sentence(sent):
             return sent
+    logging.debug("No enclosing sentence found for annotation #{}".format(ann[ann.NUM]))
 
 
 def parse_annotation(row: List[str], sentences: List[Sentence]) -> Annotation:
@@ -65,6 +67,7 @@ def parse_annotation(row: List[str], sentences: List[Sentence]) -> Annotation:
 
 
 def parse_annotations(filepath: str, sentences: List[Sentence]) -> List[Annotation]:
+    logging.debug("Parsing annotations for {}".format(filepath))
     annotations = []
     with open(filepath) as f:
         reader = csv.reader(f, delimiter="\t")
@@ -101,7 +104,7 @@ def parse_document(corpus_path: str, parent_dir: str, filename: str, version: st
     sentences = read_sentence_positions(sentence_ann_path)
     annotations = parse_annotations(annotation_path, sentences)
 
-    doc = Document(text, sentences, annotations, filename)
+    doc = Document(text, sentences, annotations, annotation_path)
     return doc
 
 
