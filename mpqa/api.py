@@ -18,7 +18,8 @@ class Annotation(dict):
     LEFT = 'left'
     RIGHT = 'right'
     SENTENCE = 'sentence'
-    TYPE = 'type'
+    ANN_TYPE = 'ann_type'
+    TYPE = "type"
     ATTITUDE_TYPE = "GATE_attitude"
     ATTITUDE_T = "attitude-type"
     ENTITY = "entity"
@@ -55,29 +56,36 @@ class Annotation(dict):
 
     @property
     def is_intensive_direct_subjectivity(self) -> bool:
-        return self[Annotation.TYPE] == Annotation.DIRECT_SUBJ_TYPE \
+        return self[Annotation.ANN_TYPE] == Annotation.DIRECT_SUBJ_TYPE \
                and Annotation.INTENSITY in self \
                and self[Annotation.INTENSITY] not in Annotation.LOW_NEUTRAL_INTENSITY_VALUES \
                and Annotation.INSUBSTANTIAL not in self
 
     @property
     def is_intensive_expressive_subjectivity(self) -> bool:
-        return self[Annotation.TYPE] == Annotation.EXPRESSIVE_SUBJ_TYPE \
+        return self[Annotation.ANN_TYPE] == Annotation.EXPRESSIVE_SUBJ_TYPE \
                and Annotation.INTENSITY in self \
                and self[Annotation.INTENSITY] not in Annotation.LOW_INTENSITY_VALUES
 
     @property
     def is_attitude(self) -> bool:
-        return self[Annotation.TYPE] == Annotation.ATTITUDE_TYPE
+        return self[Annotation.ANN_TYPE] == Annotation.ATTITUDE_TYPE
 
     @property
     def is_entity_target(self) -> bool:
-        return self[Annotation.TYPE] == Annotation.E_TARGET and self.get(Annotation.TYPE) == Annotation.ENTITY
+        return self[Annotation.ANN_TYPE] == Annotation.E_TARGET and self.get(Annotation.TYPE) == Annotation.ENTITY
 
 
 class Document(object):
     OBJ = "objective"
     SUBJ = "subjective"
+    SUBJ_OBJ_SENTS_SCHEMA = \
+        ("sentence_text", "subjectivity")
+    STARGET_ATTITUDE_SCHEMA = \
+        ("annotation_start", "annotation_end", "annotation_text",
+         "attitude", "intensity",
+         "target_start", "target_end", "target_text", "sentence_text")
+    ENTITY_SENTIMENT_SCHEMA = ("entity_start", "entity_end", "entity_text")
 
     def __init__(self, text: str, sentences: List[Sentence], annotations: List[Annotation], filename: str) -> None:
         self.filename = filename
@@ -85,9 +93,7 @@ class Document(object):
         self.sentences = sentences
         self.annotations = annotations
 
-    def subj_obj_sents(self, headers: bool = False) -> Generator[Tuple[str, str], None, None]:
-        if headers:
-            yield ("sentence_text", "subjectivity")
+    def subj_obj_sents(self) -> Generator[Tuple[str, str], None, None]:
         for sent in self.sentences:
             sentence_intensity_counter = 0
             for ann in self.annotations:
@@ -101,11 +107,7 @@ class Document(object):
             yield (sentence_text, self.SUBJ) if sentence_intensity_counter > 0 \
                 else (sentence_text, self.OBJ)
 
-    def stargets_w_attitudes(self, headers: bool = False) -> Generator[Tuple, None, None]:
-        if headers:
-            yield ("annotation_start", "annotation_end", "annotation_text",
-                   "attitude", "intensity",
-                   "target_start", "target_end", "target_text", "sentence_text")
+    def stargets_w_attitudes(self) -> Generator[Tuple, None, None]:
         for ann in self.annotations:
             if ann.is_attitude:
                 ann_text = ann.text(self.text)
@@ -122,8 +124,14 @@ class Document(object):
                 else:
                     logging.debug("No target found for annotation #{} in {}".format(ann[ann.NUM], self.filename))
 
-    def entity_sentiment(self, headers: bool = False) -> Generator[Tuple, None, None]:
-        yield from self._entities()
+    def entity_sentiment(self) -> Generator[Tuple, None, None]:
+        for e_ann in self._entities():
+            enclosing_sent = e_ann.get_enclosing_sentence()
+            if enclosing_sent[0] is not None:
+                enclosing_sent_text = enclosing_sent.text(self.text)
+                ent_text = e_ann.text(self.text)
+                yield (
+                e_ann[Annotation.LEFT] - enclosing_sent[0], e_ann[Annotation.RIGHT] - enclosing_sent[0], ent_text)
 
     def _entities(self):
         for ann in self.annotations:

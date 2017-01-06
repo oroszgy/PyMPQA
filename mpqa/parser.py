@@ -53,26 +53,31 @@ def _find_enclosing_sentences(ann: Annotation, sentences: List[Sentence]) -> Sen
     logging.debug("No enclosing sentence found for annotation #{}".format(ann[ann.NUM]))
 
 
-def parse_annotation(row: List[str], sentences: List[Sentence]) -> Optional[Annotation]:
+def parse_annotation(row: List[str], sentences: List[Sentence], version: str) -> Optional[Annotation]:
     if row[0].strip()[0] == '#':
         return None
     l, r = _parse_position(row[1])
-    ann = Annotation({Annotation.NUM: int(row[0]), Annotation.LEFT: l, Annotation.RIGHT: r, Annotation.TYPE: row[3]})
-    if len(row) > 4:
-        params = parse_annotation_properties(row[4])
+
+    type_pos = 2 if version == "3.0" else 3
+    properties_pos = 3 if version == "3.0" else 4
+
+    ann = Annotation(
+        {Annotation.NUM: int(row[0]), Annotation.LEFT: l, Annotation.RIGHT: r, Annotation.ANN_TYPE: row[type_pos]})
+    if len(row) > properties_pos:
+        params = parse_annotation_properties(row[properties_pos])
         ann.update(params)
         sentence = _find_enclosing_sentences(ann, sentences) or Sentence((None, None))
         ann[Annotation.SENTENCE] = sentence
     return ann
 
 
-def parse_annotations(filepath: str, sentences: List[Sentence]) -> List[Annotation]:
+def parse_annotations(filepath: str, sentences: List[Sentence], version: str) -> List[Annotation]:
     logging.debug("Parsing annotations for {}".format(filepath))
     annotations = []
     with open(filepath) as f:
         reader = csv.reader(f, delimiter="\t")
         for row in reader:
-            ann = parse_annotation(row, sentences)
+            ann = parse_annotation(row, sentences, version)
             if ann:
                 annotations.append(ann)
     return annotations
@@ -105,7 +110,7 @@ def parse_document(corpus_path: str, parent_dir: str, filename: str, version: st
     if os.path.exists(sentence_ann_path) and os.path.exists(annotation_path):
         text = read_document(document_path)
         sentences = read_sentence_positions(sentence_ann_path)
-        annotations = parse_annotations(annotation_path, sentences)
+        annotations = parse_annotations(annotation_path, sentences, version)
 
         doc = Document(text, sentences, annotations, annotation_path)
         return doc
