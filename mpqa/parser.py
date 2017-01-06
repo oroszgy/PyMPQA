@@ -1,7 +1,7 @@
 import csv
 import logging
 import os
-from typing import List, Union, Tuple
+from typing import List, Union, Tuple, Optional
 
 from mpqa.api import Annotation, Document, Corpus, Sentence
 
@@ -10,8 +10,8 @@ Position = Tuple[int, int]
 
 
 def _parse_position(text: str) -> Position:
-    l, r = text.split(',')
-    l, r = int(l), int(r)
+    t_parts = text.split(',')
+    l, r = int(t_parts[0].strip()), int(t_parts[1].strip())
     return l, r
 
 
@@ -42,7 +42,7 @@ def _parse_property_value(value: str) -> AnnotationValue:
 def parse_annotation_properties(text: str) -> Annotation:
     tokens = _split_annotations_properties(text)
     kv_pairs = [t.split('=') for t in tokens if len(t) > 0]
-    params = {k: _parse_property_value(v) for k, v in kv_pairs}
+    params = Annotation({k: _parse_property_value(v) for k, v in kv_pairs})
     return params
 
 
@@ -53,9 +53,9 @@ def _find_enclosing_sentences(ann: Annotation, sentences: List[Sentence]) -> Sen
     logging.debug("No enclosing sentence found for annotation #{}".format(ann[ann.NUM]))
 
 
-def parse_annotation(row: List[str], sentences: List[Sentence]) -> Annotation:
+def parse_annotation(row: List[str], sentences: List[Sentence]) -> Optional[Annotation]:
     if row[0].strip()[0] == '#':
-        return
+        return None
     l, r = _parse_position(row[1])
     ann = Annotation({Annotation.NUM: int(row[0]), Annotation.LEFT: l, Annotation.RIGHT: r, Annotation.TYPE: row[3]})
     if len(row) > 4:
