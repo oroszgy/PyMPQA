@@ -20,10 +20,15 @@ class Annotation(dict):
     SENTENCE = 'sentence'
     TYPE = 'type'
     ATTITUDE_TYPE = "GATE_attitude"
+    ATTITUDE_T = "attitude-type"
     TARGET_TYPE = "GATE_target"
     EXPRESSIVE_SUBJ_TYPE = 'GATE_expressive-subjectivity'
     DIRECT_SUBJ_TYPE = 'GATE_direct-subjective'
+    EXPRESISON_INTENSITY = 'expression-intensity'
     INTENSITY = 'intensity'
+    POLARITY = 'polarity'
+    ANNOTATION_UNCERTAIN = 'annotation-uncertain'
+    SUBJECTIVE_UNCERTAIN = 'subjective-uncertain'
     LOW_INTENSITY_VALUES = ('low',)
     LOW_NEUTRAL_INTENSITY_VALUES = ('low', 'neutral')
     INSUBSTANTIAL = "insubstantial"
@@ -74,8 +79,9 @@ class Document(object):
         self.sentences = sentences
         self.annotations = annotations
 
-    def subj_obj_sents(self) -> Generator[Tuple[str, str], None, None]:
-        yield ("sentence_text", "subjectivity")
+    def subj_obj_sents(self, headers: bool = False) -> Generator[Tuple[str, str], None, None]:
+        if headers:
+            yield ("sentence_text", "subjectivity")
         for sent in self.sentences:
             sentence_intensity_counter = 0
             for ann in self.annotations:
@@ -89,9 +95,11 @@ class Document(object):
             yield (sentence_text, self.SUBJ) if sentence_intensity_counter > 0 \
                 else (sentence_text, self.OBJ)
 
-    def targets_w_attitudes(self):
-        yield ("annotation_start", "annotation_end", "annotation_text",
-               "target_start", "target_end", "target_text", "sentence_text")
+    def targets_w_attitudes(self, headers: bool = False):
+        if headers:
+            yield ("annotation_start", "annotation_end", "annotation_text",
+                   "attitude", "intensity",
+                   "target_start", "target_end", "target_text", "sentence_text")
         for ann in self.annotations:
             if ann.is_attitude:
                 ann_text = ann.text(self.text)
@@ -101,6 +109,7 @@ class Document(object):
                 if target_ann and enclosing_sentence_text:
                     target_text = target_ann.text(self.text)
                     yield (ann[Annotation.LEFT] - sentence[0], ann[Annotation.RIGHT] - sentence[0], ann_text,
+                           ann.get(Annotation.ATTITUDE_T, "-"), ann.get(Annotation.INTENSITY, "-"),
                            target_ann[Annotation.LEFT] - sentence[0], target_ann[Annotation.RIGHT] - sentence[0],
                            target_text,
                            enclosing_sentence_text)
