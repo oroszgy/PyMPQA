@@ -14,7 +14,7 @@ def _parse_position(text: str) -> Position:
     return l, r
 
 
-def _split_annotations(text: str) -> List[str]:
+def _split_annotations_properties(text: str) -> List[str]:
     delimiter = " "
     quoted = False
     start = 0
@@ -29,7 +29,7 @@ def _split_annotations(text: str) -> List[str]:
     return tokens
 
 
-def _parse_annotation_value(value: str) -> AnnotationValue:
+def _parse_property_value(value: str) -> AnnotationValue:
     delimiter = ","
     value = value.replace("\"", "")
     if delimiter in value:
@@ -38,10 +38,10 @@ def _parse_annotation_value(value: str) -> AnnotationValue:
         return value
 
 
-def parse_annotation(text: str) -> Annotation:
-    tokens = _split_annotations(text)
+def parse_annotation_properties(text: str) -> Annotation:
+    tokens = _split_annotations_properties(text)
     kv_pairs = [t.split('=') for t in tokens if len(t) > 0]
-    params = {k: _parse_annotation_value(v) for k, v in kv_pairs}
+    params = {k: _parse_property_value(v) for k, v in kv_pairs}
     return params
 
 
@@ -51,21 +51,27 @@ def _find_enclosing_sentences(ann: Annotation, sentences: List[Sentence]) -> Sen
             return sent
 
 
+def parse_annotation(row: List[str], sentences: List[Sentence]) -> Annotation:
+    if row[0].strip()[0] == '#':
+        return
+    l, r = _parse_position(row[1])
+    ann = Annotation({Annotation.NUM: int(row[0]), Annotation.LEFT: l, Annotation.RIGHT: r, Annotation.TYPE: row[3]})
+    if len(row) > 4:
+        params = parse_annotation_properties(row[4])
+        ann.update(params)
+        sentence = _find_enclosing_sentences(ann, sentences) or Sentence((None, None))
+        ann[Annotation.SENTENCE] = sentence
+    return ann
+
+
 def parse_annotations(filepath: str, sentences: List[Sentence]) -> List[Annotation]:
     annotations = []
     with open(filepath) as f:
         reader = csv.reader(f, delimiter="\t")
         for row in reader:
-            if row[0].strip()[0] == '#':
-                continue
-            l, r = _parse_position(row[1])
-            ann = Annotation({Annotation.LEFT: l, Annotation.RIGHT: r, Annotation.TYPE: row[3]})
-            if len(row) > 4:
-                params = parse_annotation(row[4])
-                ann.update(params)
-                sentence = _find_enclosing_sentences(ann, sentences) or Sentence((None, None))
-                ann[Annotation.SENTENCE] = sentence
-            annotations.append(ann)
+            ann = parse_annotation(row, sentences)
+            if ann:
+                annotations.append(ann)
     return annotations
 
 

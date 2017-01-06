@@ -1,6 +1,7 @@
 """
 Details of the annotation scheme is described here: https://github.com/jyuhuan/mpqa/wiki/Types-of-Annotations
 """
+import logging
 from typing import List, Tuple, Generator
 
 
@@ -13,6 +14,7 @@ class Sentence(tuple):
 
 
 class Annotation(dict):
+    NUM = "num"
     LEFT = 'left'
     RIGHT = 'right'
     SENTENCE = 'sentence'
@@ -96,8 +98,7 @@ class Document(object):
                     target_text = target_ann.text(self.text)
                     yield (ann_text, target_text, enclosing_sentence_text)
                 else:
-                    # TODO: log something
-                    pass
+                    logging.error("No target found for annotation #{} in {}".format(ann[ann.NUM], self.filename))
 
 
 class Corpus(object):

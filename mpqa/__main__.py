@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 import csv
 import sys
+import logging
 from typing import Iterable
+
+logging.basicConfig(level=logging.DEBUG)
 
 import click
 
