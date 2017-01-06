@@ -75,6 +75,7 @@ class Document(object):
         self.annotations = annotations
 
     def subj_obj_sents(self) -> Generator[Tuple[str, str], None, None]:
+        yield ("sentence_text, subjectivity")
         for sent in self.sentences:
             sentence_intensity_counter = 0
             for ann in self.annotations:
@@ -89,14 +90,20 @@ class Document(object):
                 else (sentence_text, self.OBJ)
 
     def targets_w_attitudes(self):
+        yield ("annotation_start", "annotation_end", "annotation_text",
+               "target_start", "target_end", "target_text", "sentence_text")
         for ann in self.annotations:
             if ann.is_attitude:
                 ann_text = ann.text(self.text)
-                enclosing_sentence_text = ann.get_enclosing_sentence().text(self.text)
+                sentence = ann.get_enclosing_sentence()
+                enclosing_sentence_text = sentence.text(self.text)
                 target_ann = ann.find_target_annotation(self.annotations)
-                if target_ann:
+                if target_ann and enclosing_sentence_text:
                     target_text = target_ann.text(self.text)
-                    yield (ann_text, target_text, enclosing_sentence_text)
+                    yield (ann[Annotation.LEFT] - sentence[0], ann[Annotation.RIGHT] - sentence[0], ann_text,
+                           target_ann[Annotation.LEFT] - sentence[0], target_ann[Annotation.RIGHT] - sentence[0],
+                           target_text,
+                           enclosing_sentence_text)
                 else:
                     logging.debug("No target found for annotation #{} in {}".format(ann[ann.NUM], self.filename))
 

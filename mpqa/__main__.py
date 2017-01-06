@@ -1,26 +1,26 @@
 #!/usr/bin/env python3
 import csv
-import sys
 import logging
+import sys
 from typing import Iterable
-
-logging.basicConfig(level=logging.INFO)
 
 import click
 
 from mpqa import parse_corpus
 
+logging.basicConfig(level=logging.INFO)
+
+
+def write_tsv(rows: Iterable[Iterable], file):
+    writer = csv.writer(file, delimiter="\t")
+    for row in rows:
+        writer.writerow(row)
+        sys.stdout.flush()
+
 
 @click.group()
 def mpqa_cli():
     pass
-
-
-def write_tsv(rows: Iterable[Iterable], file):
-    writer = csv.writer(file, delimiter='\t')
-    for row in rows:
-        writer.writerow(row)
-        sys.stdout.flush()
 
 
 @mpqa_cli.command()
