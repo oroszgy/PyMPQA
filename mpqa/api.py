@@ -75,7 +75,7 @@ class Document(object):
         self.annotations = annotations
 
     def subj_obj_sents(self) -> Generator[Tuple[str, str], None, None]:
-        yield ("sentence_text, subjectivity")
+        yield ("sentence_text", "subjectivity")
         for sent in self.sentences:
             sentence_intensity_counter = 0
             for ann in self.annotations:

@@ -28,7 +28,7 @@ def mpqa_cli():
 def sentence_subjectivity(corpus_path: str):
     corpus = parse_corpus(corpus_path)
     write_tsv(
-        ((sent, label) for doc in corpus.documents for sent, label in doc.subj_obj_sents()),
+        (data for doc in corpus.documents for data in doc.subj_obj_sents()),
         sys.stdout
     )
 
